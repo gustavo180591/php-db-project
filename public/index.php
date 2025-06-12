@@ -72,7 +72,7 @@ try {
                     <?php endif; ?>
                     <?php if ($_SESSION['role_id'] <= 2): ?> <!-- Administrador o Evaluador -->
                         <li class="nav-item">
-                            <a class="nav-link" href="evaluador/tests.php">
+                            <a class="nav-link" href="/evaluador/tests.php">
                                 <i class="fas fa-file-alt"></i>
                                 <span>Tests</span>
                             </a>

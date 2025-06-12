@@ -14,9 +14,53 @@ $error = '';
 try {
     $pdo = getConnection();
     
-    // Obtener todos los tests
-    $stmt = $pdo->query("SELECT * FROM tests");
-    $tests = $stmt->fetchAll();
+    // Obtener categorías
+    $stmt = $pdo->query("SELECT * FROM test_categories WHERE estado = 1 ORDER BY nombre");
+    $categories = $stmt->fetchAll();
+    
+    // Obtener tipos de tests con sus categorías
+    $stmt = $pdo->query("
+        SELECT tt.*, 
+               GROUP_CONCAT(tc.nombre SEPARATOR ', ') as categorias,
+               GROUP_CONCAT(tc.icono SEPARATOR ', ') as iconos
+        FROM test_types tt
+        LEFT JOIN test_type_categories ttc ON tt.id = ttc.test_type_id
+        LEFT JOIN test_categories tc ON ttc.category_id = tc.id
+        WHERE tt.estado = 1
+        GROUP BY tt.id
+        ORDER BY tt.nombre
+    ");
+    $test_types = $stmt->fetchAll();
+    
+    // Verificar permisos para cada test
+    $stmt = $pdo->prepare("
+        SELECT tp.permiso 
+        FROM test_permissions tp 
+        WHERE tp.rol_id = ? AND tp.test_type_id = ?
+    ");
+    
+    foreach ($test_types as &$test) {
+        $stmt->execute([$_SESSION['rol_id'], $test['id']]);
+        $permiso = $stmt->fetch()['permiso'] ?? 'ver';
+        $test['permiso'] = $permiso;
+    }
+    
+    // Obtener configuración del test si existe
+    $test_config = null;
+    if ($test_id) {
+        $stmt = $pdo->prepare("SELECT * FROM test_types WHERE id = ?");
+        $stmt->execute([$test_id]);
+        $test = $stmt->fetch();
+        if ($test) {
+            $test_config = json_decode($test['configuracion'], true);
+        }
+    }
+    
+    // Obtener rangos de Cooper si es necesario
+    if (isset($test) && $test['nombre'] === 'Cooper') {
+        $stmt = $pdo->query("SELECT * FROM cooper_ranges ORDER BY sexo, edad_min");
+        $cooper_ranges = $stmt->fetchAll();
+    }
     
     // Manejar formularios
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -128,21 +172,60 @@ try {
                                             </label>
                                         </div>
                                     </div>
+                                    
+                                    <?php if ($action === 'edit' && isset($test_config)): ?>
+                                    <div class="alert alert-info">
+                                        <h5>Información del Test</h5>
+                                        <p><?php echo htmlspecialchars($test_config['descripcion']); ?></p>
+                                        <?php if (isset($test_config['unidad'])): ?>
+                                            <p><strong>Unidad de medida:</strong> <?php echo $test_config['unidad']; ?></p>
+                                        <?php endif; ?>
+                                        <?php if (isset($test_config['tiempo'])): ?>
+                                            <p><strong>Tiempo:</strong> <?php echo $test_config['tiempo']; ?></p>
+                                        <?php endif; ?>
+                                        <?php if (isset($test_config['edad_min'])): ?>
+                                            <p><strong>Edad mínima:</strong> <?php echo $test_config['edad_min']; ?> años</p>
+                                        <?php endif; ?>
+                                        <?php if (isset($test_config['edad_max'])): ?>
+                                            <p><strong>Edad máxima:</strong> <?php echo $test_config['edad_max']; ?> años</p>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php endif; ?>
                                     <button type="submit" class="btn btn-primary">Guardar</button>
-                                    <a href="." class="btn btn-secondary">Cancelar</a>
+                                    <a href="/evaluador/tests.php" class="btn btn-secondary">Cancelar</a>
                                 </form>
                             </div>
                         </div>
                     <?php elseif ($test_id): ?>
                         <div class="card">
                             <div class="card-header d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0"><?php echo htmlspecialchars($test['nombre']); ?></h5>
                                 <div>
-                                    <a href="?action=edit&id=<?php echo $test_id; ?>" class="btn btn-sm btn-primary">
-                                        <i class="fas fa-edit"></i> Editar Test
-                                    </a>
-                                    <a href="preguntas.php?id=<?php echo $test_id; ?>" class="btn btn-sm btn-info">
-                                        <i class="fas fa-plus"></i> Agregar Pregunta
+                                    <h5 class="mb-0"><?php echo htmlspecialchars($test['nombre']); ?></h5>
+                                    <small class="text-muted">
+                                        <?php 
+                                        if (!empty($test['categorias'])) {
+                                            $icons = explode(', ', $test['iconos']);
+                                            $categories = explode(', ', $test['categorias']);
+                                            foreach ($categories as $i => $category) {
+                                                echo '<i class="' . $icons[$i] . '"></i> ' . $category . ' ';
+                                            }
+                                        }
+                                        ?>
+                                    </small>
+                                </div>
+                                <div>
+                                    <?php if ($test['permiso'] === 'administrar'): ?>
+                                        <a href="/evaluador/tests.php?action=edit&id=<?php echo $test_id; ?>" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-edit"></i> Editar Test
+                                        </a>
+                                    <?php endif; ?>
+                                    <?php if ($test['permiso'] !== 'ver'): ?>
+                                        <a href="/evaluador/evaluar.php?id=<?php echo $test_id; ?>" class="btn btn-sm btn-info">
+                                            <i class="fas fa-running"></i> Evaluar Test
+                                        </a>
+                                    <?php endif; ?>
+                                    <a href="/evaluador/evolucion.php?id=<?php echo $test_id; ?>" class="btn btn-sm btn-success">
+                                        <i class="fas fa-chart-line"></i> Evolución
                                     </a>
                                 </div>
                             </div>
@@ -163,13 +246,31 @@ try {
                                                 <td><?php echo $pregunta['numero']; ?></td>
                                                 <td><?php echo htmlspecialchars($pregunta['pregunta']); ?></td>
                                                 <td><?php echo ucfirst($pregunta['tipo']); ?></td>
-                                                <td><?php echo $pregunta['puntos']; ?></td>
+                                                <?php if ($test['nombre'] === 'Cooper'): ?>
+                                            <td>
+                                                <span class="badge bg-info">
+                                                    <?php 
+                                                    // Buscar el nivel correspondiente
+                                                    $nivel = 'No evaluado';
+                                                    foreach ($cooper_ranges as $rango) {
+                                                        if ($rango['distancia_min'] <= $pregunta['puntos'] && $pregunta['puntos'] <= $rango['distancia_max']) {
+                                                            $nivel = $rango['nivel'];
+                                                            break;
+                                                        }
+                                                    }
+                                                    echo $nivel;
+                                                    ?>
+                                                </span>
+                                            </td>
+                                        <?php else: ?>
+                                            <td><?php echo $pregunta['puntos']; ?></td>
+                                        <?php endif; ?>
                                                 <td>
-                                                    <a href="preguntas.php?action=edit&id=<?php echo $pregunta['id']; ?>" 
+                                                    <a href="/evaluador/preguntas.php?action=edit&id=<?php echo $pregunta['id']; ?>" 
                                                        class="btn btn-sm btn-primary">
                                                         <i class="fas fa-edit"></i>
                                                     </a>
-                                                    <a href="preguntas.php?action=delete&id=<?php echo $pregunta['id']; ?>" 
+                                                    <a href="/evaluador/preguntas.php?action=delete&id=<?php echo $pregunta['id']; ?>" 
                                                        class="btn btn-sm btn-danger" 
                                                        onclick="return confirm('¿Estás seguro de eliminar esta pregunta?')">
                                                         <i class="fas fa-trash"></i>
@@ -185,7 +286,7 @@ try {
                         <div class="card">
                             <div class="card-header d-flex justify-content-between align-items-center">
                                 <h5 class="mb-0">Lista de Tests</h5>
-                                <a href="?action=add" class="btn btn-primary">
+                                <a href="/evaluador/tests.php?action=add" class="btn btn-primary">
                                     <i class="fas fa-plus"></i> Nuevo Test
                                 </a>
                             </div>
@@ -210,15 +311,15 @@ try {
                                                     </span>
                                                 </td>
                                                 <td>
-                                                    <a href="?id=<?php echo $test['id']; ?>" 
+                                                    <a href="/evaluador/tests.php?id=<?php echo $test['id']; ?>" 
                                                        class="btn btn-sm btn-info">
                                                         <i class="fas fa-eye"></i> Ver
                                                     </a>
-                                                    <a href="?action=edit&id=<?php echo $test['id']; ?>" 
+                                                    <a href="/evaluador/tests.php?action=edit&id=<?php echo $test['id']; ?>" 
                                                        class="btn btn-sm btn-primary">
                                                         <i class="fas fa-edit"></i>
                                                     </a>
-                                                    <a href="?action=delete&id=<?php echo $test['id']; ?>" 
+                                                    <a href="/evaluador/tests.php?action=delete&id=<?php echo $test['id']; ?>" 
                                                        class="btn btn-sm btn-danger" 
                                                        onclick="return confirm('¿Estás seguro de eliminar este test?')">
                                                         <i class="fas fa-trash"></i>

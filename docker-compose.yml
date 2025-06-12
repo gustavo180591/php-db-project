@@ -1,29 +1,46 @@
 version: '3.8'
 
 services:
-  php:
-    build: .
-    container_name: php-app
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
     volumes:
-      - ./public:/var/www/html
+      - .:/var/www/html
+      - ./vendor:/var/www/html/vendor
     ports:
       - "8080:80"
     depends_on:
       - db
+    environment:
+      - APP_ENV=${APP_ENV}
+      - DB_HOST=db
+      - DB_DATABASE=${DB_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
 
   db:
     image: mysql:8.0
-    container_name: mysql-db
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: sistema_captacion
-      MYSQL_USER: user
-      MYSQL_PASSWORD: pass
-    ports:
-      - "3310:3306"
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
     volumes:
       - db_data:/var/lib/mysql
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "3306:3306"
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: db
+      PMA_USER: ${DB_USERNAME}
+      PMA_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      - db
 
 volumes:
   db_data:
