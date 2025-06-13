@@ -1,5 +1,5 @@
 <?php
-require_once '../config/database.php';
+require_once '../../config/database.php';
 checkAuth();
 checkRole(2); // Solo evaluadores pueden acceder
 

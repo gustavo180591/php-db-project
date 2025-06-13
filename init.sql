@@ -49,17 +49,35 @@ CREATE TABLE centros (
 -- Tabla de personas
 CREATE TABLE personas (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    dni VARCHAR(20) NOT NULL UNIQUE,
     nombre VARCHAR(100) NOT NULL,
     apellido VARCHAR(100) NOT NULL,
-    dni VARCHAR(20) UNIQUE NOT NULL,
-    fecha_nacimiento DATE,
+    sexo ENUM('M', 'F') NOT NULL,
+    fecha_nacimiento DATE NOT NULL,
     direccion TEXT,
     telefono VARCHAR(20),
     email VARCHAR(100),
     zona_id INT NOT NULL,
     centro_id INT,
     estado BOOLEAN DEFAULT TRUE,
-    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Tabla de evaluaciones
+CREATE TABLE evaluaciones (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    test_id INT NOT NULL,
+    persona_id INT NOT NULL,
+    resultado FLOAT NOT NULL,
+    nivel VARCHAR(20),
+    aprobado BOOLEAN NOT NULL DEFAULT FALSE,
+    fecha TIMESTAMP NOT NULL,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (test_id) REFERENCES tests(id),
+    FOREIGN KEY (persona_id) REFERENCES personas(id)
 );
 
 -- Tabla de tests
@@ -114,6 +132,19 @@ ALTER TABLE asignaciones_tests ADD CONSTRAINT fk_asignacion_test FOREIGN KEY (te
 ALTER TABLE asignaciones_tests ADD CONSTRAINT fk_asignacion_evaluador FOREIGN KEY (evaluador_id) REFERENCES usuarios(id);
 ALTER TABLE respuestas ADD CONSTRAINT fk_respuesta_asignacion FOREIGN KEY (asignacion_id) REFERENCES asignaciones_tests(id);
 ALTER TABLE respuestas ADD CONSTRAINT fk_respuesta_pregunta FOREIGN KEY (pregunta_id) REFERENCES preguntas(id);
+
+-- Índices para optimizar consultas
+CREATE INDEX idx_personas_dni ON personas(dni);
+CREATE INDEX idx_personas_zona ON personas(zona_id);
+CREATE INDEX idx_personas_sexo ON personas(sexo);
+CREATE INDEX idx_personas_fecha_nacimiento ON personas(fecha_nacimiento);
+CREATE INDEX idx_asignaciones_persona ON asignaciones_tests(persona_id);
+CREATE INDEX idx_asignaciones_test ON asignaciones_tests(test_id);
+CREATE INDEX idx_respuestas_asignacion ON respuestas(asignacion_id);
+CREATE INDEX idx_evaluaciones_test ON evaluaciones(test_id);
+CREATE INDEX idx_evaluaciones_persona ON evaluaciones(persona_id);
+CREATE INDEX idx_evaluaciones_fecha ON evaluaciones(fecha);
+CREATE INDEX idx_evaluaciones_aprobado ON evaluaciones(aprobado);
 
 -- Índices para optimizar consultas
 CREATE INDEX idx_personas_dni ON personas(dni);

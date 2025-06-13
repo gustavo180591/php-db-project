@@ -6,18 +6,45 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    try {
-        $pdo = getConnection();
-        
+$action = $_GET['action'] ?? '';
+
+try {
+    $pdo = getConnection();
+    
+    // Obtener todas las zonas
+    $stmt = $pdo->query("SELECT * FROM zonas WHERE estado = 1");
+    $zonas = $stmt->fetchAll();
+    
+    // Obtener todos los centros
+    $stmt = $pdo->query("SELECT c.*, z.nombre as zona_nombre 
+                         FROM centros c 
+                         JOIN zonas z ON c.zona_id = z.id 
+                         WHERE c.estado = 1");
+    $centros = $stmt->fetchAll();
+    
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Validate inputs
         $nombre = trim($_POST['nombre'] ?? '');
+        $apellido = trim($_POST['apellido'] ?? '');
+        $dni = trim($_POST['dni'] ?? '');
+        $fecha_nacimiento = $_POST['fecha_nacimiento'] ?? '';
+        $sexo = $_POST['sexo'] ?? '';
+        $direccion = trim($_POST['direccion'] ?? '');
+        $telefono = trim($_POST['telefono'] ?? '');
         $email = trim($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
         $confirm_password = $_POST['confirm_password'] ?? '';
         
         if (empty($nombre)) {
             $error = "El nombre es requerido";
+        } elseif (empty($apellido)) {
+            $error = "El apellido es requerido";
+        } elseif (empty($dni)) {
+            $error = "El DNI es requerido";
+        } elseif (empty($fecha_nacimiento)) {
+            $error = "La fecha de nacimiento es requerida";
+        } elseif (empty($sexo)) {
+            $error = "El sexo es requerido";
         } elseif (empty($email)) {
             $error = "El email es requerido";
         } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -37,9 +64,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 // Insert new user
                 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-                $stmt = $pdo->prepare("INSERT INTO usuarios (nombre, email, password, rol_id) VALUES (?, ?, ?, ?)");
                 
-                if ($stmt->execute([$nombre, $email, $hashed_password, 3])) {
+                // Insertar persona
+                $stmt = $pdo->prepare("INSERT INTO personas (nombre, apellido, dni, fecha_nacimiento, sexo, direccion, telefono, estado) 
+                                      VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$nombre, $apellido, $dni, $fecha_nacimiento, $sexo, $direccion, $telefono, 1]);
+                $persona_id = $pdo->lastInsertId();
+                
+                // Insertar usuario
+                $stmt = $pdo->prepare("INSERT INTO usuarios (nombre, email, password, rol_id, persona_id) VALUES (?, ?, ?, ?, ?)");
+                
+                if ($stmt->execute([$nombre . ' ' . $apellido, $email, $hashed_password, 3, $persona_id])) {
                     // Redirect to login page with success message
                     $_SESSION['success'] = "Registro exitoso. Por favor, inicia sesión.";
                     header('Location: login.php');
@@ -49,10 +84,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         }
-    } catch (PDOException $e) {
-        $error = "Error al registrar el usuario: " . $e->getMessage();
-        error_log("Error de registro: " . $e->getMessage());
     }
+} catch (PDOException $e) {
+    $error = "Error al registrar el usuario: " . $e->getMessage();
+    error_log("Error de registro: " . $e->getMessage());
+}
 }
 ?>
 
@@ -79,21 +115,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <?php endif; ?>
                         
                         <form method="POST">
-                            <div class="mb-3">
-                                <label for="nombre" class="form-label">Nombre Completo</label>
-                                <input type="text" class="form-control" id="nombre" name="nombre" required>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="nombre" class="form-label">Nombre</label>
+                                    <input type="text" class="form-control" id="nombre" name="nombre" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="apellido" class="form-label">Apellido</label>
+                                    <input type="text" class="form-control" id="apellido" name="apellido" required>
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <label for="email" class="form-label">Email</label>
-                                <input type="email" class="form-control" id="email" name="email" required>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="dni" class="form-label">DNI</label>
+                                    <input type="text" class="form-control" id="dni" name="dni" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="fecha_nacimiento" class="form-label">Fecha de Nacimiento</label>
+                                    <input type="date" class="form-control" id="fecha_nacimiento" name="fecha_nacimiento" required>
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <label for="password" class="form-label">Contraseña</label>
-                                <input type="password" class="form-control" id="password" name="password" required>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="sexo" class="form-label">Sexo</label>
+                                    <select class="form-select" id="sexo" name="sexo" required>
+                                        <option value="">Seleccione...</option>
+                                        <option value="M">Masculino</option>
+                                        <option value="F">Femenino</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="direccion" class="form-label">Dirección</label>
+                                    <input type="text" class="form-control" id="direccion" name="direccion">
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <label for="confirm_password" class="form-label">Confirmar Contraseña</label>
-                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="telefono" class="form-label">Teléfono</label>
+                                    <input type="tel" class="form-control" id="telefono" name="telefono">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="email" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="email" name="email" required>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="password" class="form-label">Contraseña</label>
+                                    <input type="password" class="form-control" id="password" name="password" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="confirm_password" class="form-label">Confirmar Contraseña</label>
+                                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                                </div>
                             </div>
                             <button type="submit" class="btn btn-primary w-100">Registrarse</button>
                         </form>

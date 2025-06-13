@@ -10,7 +10,7 @@ class Test
     private string $nombre;
     private string $categoria;
     private string $descripcion;
-    private array $configuracion;
+    private ConfiguracionTest $configuracion;
     private DateTimeInterface $fechaCreacion;
     private bool $activo;
 
@@ -32,7 +32,7 @@ class Test
         $this->nombre = $nombre;
         $this->categoria = $categoria;
         $this->descripcion = $descripcion;
-        $this->configuracion = $configuracion;
+        $this->configuracion = new ConfiguracionTest($configuracion);
         $this->fechaCreacion = $fechaCreacion;
         $this->activo = $activo;
     }
@@ -57,7 +57,7 @@ class Test
         return $this->descripcion;
     }
 
-    public function getConfiguracion(): array
+    public function getConfiguracion(): ConfiguracionTest
     {
         return $this->configuracion;
     }
@@ -72,18 +72,5 @@ class Test
         return $this->activo;
     }
 
-    public function obtenerNivel($valor, string $sexo = 'M'): ?string
-    {
-        if (!isset($this->configuracion['rango'][$sexo])) {
-            return null;
-        }
 
-        foreach ($this->configuracion['rango'][$sexo] as $nivel => $rango) {
-            if ($valor >= $rango['min'] && $valor <= $rango['max']) {
-                return $nivel;
-            }
-        }
-
-        return null;
-    }
 }

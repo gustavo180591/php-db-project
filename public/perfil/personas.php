@@ -1,5 +1,5 @@
 <?php
-require_once '../../config/database.php';
+require_once '../config/database.php';
 checkAuth();
 
 // Manejar acciones CRUD
@@ -37,6 +37,7 @@ try {
         $apellido = $_POST['apellido'] ?? '';
         $dni = $_POST['dni'] ?? '';
         $fecha_nacimiento = $_POST['fecha_nacimiento'] ?? '';
+        $sexo = $_POST['sexo'] ?? '';
         $direccion = $_POST['direccion'] ?? '';
         $telefono = $_POST['telefono'] ?? '';
         $email = $_POST['email'] ?? '';
@@ -52,7 +53,8 @@ try {
                                       nombre = ?, 
                                       apellido = ?, 
                                       dni = ?, 
-                                      fecha_nacimiento = ?, 
+                                      fecha_nacimiento = ?,
+                                      sexo = ?,
                                       direccion = ?, 
                                       telefono = ?, 
                                       email = ?, 
@@ -60,12 +62,12 @@ try {
                                       centro_id = ?, 
                                       estado = ? 
                                       WHERE id = ?");
-                $stmt->execute([$nombre, $apellido, $dni, $fecha_nacimiento, $direccion, $telefono, $email, $zona_id, $centro_id, $estado, $persona_id]);
+                $stmt->execute([$nombre, $apellido, $dni, $fecha_nacimiento, $sexo, $direccion, $telefono, $email, $zona_id, $centro_id, $estado, $persona_id]);
                 $message = "Persona actualizada exitosamente";
             } else {
-                $stmt = $pdo->prepare("INSERT INTO personas (nombre, apellido, dni, fecha_nacimiento, direccion, telefono, email, zona_id, centro_id, estado) 
-                                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$nombre, $apellido, $dni, $fecha_nacimiento, $direccion, $telefono, $email, $zona_id, $centro_id, $estado]);
+                $stmt = $pdo->prepare("INSERT INTO personas (nombre, apellido, dni, fecha_nacimiento, sexo, direccion, telefono, email, zona_id, centro_id, estado) 
+                                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$nombre, $apellido, $dni, $fecha_nacimiento, $sexo, $direccion, $telefono, $email, $zona_id, $centro_id, $estado]);
                 $message = "Persona registrada exitosamente";
             }
         }
@@ -155,7 +157,15 @@ try {
                                         <div class="col-md-6 mb-3">
                                             <label for="fecha_nacimiento" class="form-label">Fecha de Nacimiento</label>
                                             <input type="date" class="form-control" id="fecha_nacimiento" name="fecha_nacimiento" 
-                                                   value="<?php echo isset($persona) ? htmlspecialchars($persona['fecha_nacimiento']) : ''; ?>">
+                                                   value="<?php echo isset($persona) ? htmlspecialchars($persona['fecha_nacimiento']) : ''; ?>" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="sexo" class="form-label">Sexo</label>
+                                            <select class="form-select" id="sexo" name="sexo" required>
+                                                <option value="">Seleccione...</option>
+                                                <option value="M" <?php echo isset($persona) && $persona['sexo'] === 'M' ? 'selected' : ''; ?>>Masculino</option>
+                                                <option value="F" <?php echo isset($persona) && $persona['sexo'] === 'F' ? 'selected' : ''; ?>>Femenino</option>
+                                            </select>
                                         </div>
                                     </div>
                                     <div class="row">
@@ -227,9 +237,12 @@ try {
                                 <table class="table">
                                     <thead>
                                         <tr>
-                                            <th>Nombre Completo</th>
+                                            <th>ID</th>
+                                            <th>Nombre</th>
+                                            <th>Apellido</th>
                                             <th>DNI</th>
                                             <th>Fecha Nac.</th>
+                                            <th>Sexo</th>
                                             <th>Zona</th>
                                             <th>Centro</th>
                                             <th>Estado</th>
@@ -239,26 +252,24 @@ try {
                                     <tbody>
                                         <?php foreach ($personas as $persona): ?>
                                             <tr>
-                                                <td><?php echo htmlspecialchars($persona['nombre'] . ' ' . $persona['apellido']); ?></td>
+                                                <td><?php echo htmlspecialchars($persona['id']); ?></td>
+                                                <td><?php echo htmlspecialchars($persona['nombre']); ?></td>
+                                                <td><?php echo htmlspecialchars($persona['apellido']); ?></td>
                                                 <td><?php echo htmlspecialchars($persona['dni']); ?></td>
-                                                <td><?php echo $persona['fecha_nacimiento'] ? date('d/m/Y', strtotime($persona['fecha_nacimiento'])) : ''; ?></td>
+                                                <td><?php echo htmlspecialchars(date('d/m/Y', strtotime($persona['fecha_nacimiento']))); ?></td>
+                                                <td><?php echo $persona['sexo'] === 'M' ? 'Masculino' : 'Femenino'; ?></td>
                                                 <td><?php echo htmlspecialchars($persona['zona_nombre']); ?></td>
                                                 <td><?php echo htmlspecialchars($persona['centro_nombre']); ?></td>
+                                                <td><?php echo $persona['estado'] ? 'Activo' : 'Inactivo'; ?></td>
                                                 <td>
-                                                    <span class="badge <?php echo $persona['estado'] ? 'bg-success' : 'bg-danger'; ?>">
-                                                        <?php echo $persona['estado'] ? 'Activa' : 'Inactiva'; ?>
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <a href="?action=edit&id=<?php echo $persona['id']; ?>" 
-                                                       class="btn-edit">
-                                                        <i class="fas fa-edit"></i> Editar
-                                                    </a>
-                                                    <button type="button" class="btn-delete" 
-                                                            data-bs-toggle="modal" 
-                                                            data-bs-target="#deleteModal<?php echo $persona['id']; ?>">
-                                                        <i class="fas fa-trash"></i> Eliminar
-                                                    </button>
+                                                    <div class="btn-group">
+                                                        <a href="?action=edit&id=<?php echo $persona['id']; ?>" class="btn btn-sm btn-primary" title="Editar">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        <a href="?action=delete&id=<?php echo $persona['id']; ?>" class="btn btn-sm btn-danger" title="Eliminar" onclick="return confirm('¿Estás seguro de eliminar esta persona?')">
+                                                            <i class="fas fa-trash"></i>
+                                                        </a>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
