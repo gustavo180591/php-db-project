@@ -21,8 +21,10 @@ CREATE TABLE usuarios (
     email VARCHAR(100) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
     rol_id INT NOT NULL,
+    persona_id INT,
     estado BOOLEAN DEFAULT TRUE,
-    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (persona_id) REFERENCES personas(id)
 );
 
 -- Tabla de zonas
@@ -61,7 +63,9 @@ CREATE TABLE personas (
     centro_id INT,
     estado BOOLEAN DEFAULT TRUE,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (zona_id) REFERENCES zonas(id),
+    FOREIGN KEY (centro_id) REFERENCES centros(id)
 );
 
 -- Tabla de evaluaciones
@@ -143,6 +147,7 @@ CREATE INDEX idx_asignaciones_test ON asignaciones_tests(test_id);
 CREATE INDEX idx_respuestas_asignacion ON respuestas(asignacion_id);
 CREATE INDEX idx_evaluaciones_test ON evaluaciones(test_id);
 CREATE INDEX idx_evaluaciones_persona ON evaluaciones(persona_id);
+CREATE INDEX idx_usuarios_persona ON usuarios(persona_id);
 CREATE INDEX idx_evaluaciones_fecha ON evaluaciones(fecha);
 CREATE INDEX idx_evaluaciones_aprobado ON evaluaciones(aprobado);
 

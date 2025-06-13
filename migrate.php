@@ -26,22 +26,15 @@ function executeMigration($pdo, $migrationFile) {
     }
 }
 
-// Get list of migration files
-$migrationDir = __DIR__ . '/migrations';
-$migrationFiles = glob($migrationDir . '/*.sql');
-
-// Sort migrations numerically
-usort($migrationFiles, function($a, $b) {
-    return strnatcmp(basename($a), basename($b));
-});
+// Ejecutar solo la última migración específica
+$migrationFile = __DIR__ . '/migrations/20250613_actualizar_relaciones_2.sql';
 
 // Connect to database
 $pdo = getConnection();
+$pdo->exec("USE sistema_captacion");
 
-// Execute each migration
-foreach ($migrationFiles as $migrationFile) {
-    executeMigration($pdo, $migrationFile);
-}
+// Ejecutar la migración
+executeMigration($pdo, $migrationFile);
 
 // Insert test data if needed
 try {
