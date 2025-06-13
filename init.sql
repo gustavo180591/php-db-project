@@ -12,7 +12,16 @@ CREATE TABLE roles (
 INSERT INTO roles (nombre, descripcion) VALUES 
 ('Administrador', 'Tiene acceso completo al sistema'),
 ('Evaluador', 'Puede asignar y evaluar tests'),
-('Usuario', 'Acceso básico al sistema');
+('Atleta', 'Usuario que se somete a evaluaciones');
+
+-- Crear usuario administrador
+INSERT INTO personas (dni, nombre, apellido, sexo, fecha_nacimiento, email, zona_id, estado) VALUES
+('00000000', 'Admin', 'Sistema', 'M', '2000-01-01', 'admin@cepard.com', 1, 1);
+
+SET @persona_id = LAST_INSERT_ID();
+
+INSERT INTO usuarios (nombre, email, password, rol_id, persona_id, estado) VALUES
+('Admin Sistema', 'admin@cepard.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, @persona_id, 1);
 
 -- Tabla de usuarios
 CREATE TABLE usuarios (
@@ -27,12 +36,6 @@ CREATE TABLE usuarios (
     FOREIGN KEY (persona_id) REFERENCES personas(id)
 );
 
--- Tabla de zonas
-CREATE TABLE zonas (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    numero INT NOT NULL,
-    nombre VARCHAR(100) NOT NULL,
-    descripcion TEXT,
     estado BOOLEAN DEFAULT TRUE,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -66,6 +69,28 @@ CREATE TABLE personas (
     actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (zona_id) REFERENCES zonas(id),
     FOREIGN KEY (centro_id) REFERENCES centros(id)
+);
+
+-- Tabla de evaluadores
+CREATE TABLE evaluadores (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    persona_id INT NOT NULL,
+    especialidad VARCHAR(100) NOT NULL,
+    experiencia INT NOT NULL,
+    estado BOOLEAN DEFAULT TRUE,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (persona_id) REFERENCES personas(id)
+);
+
+-- Tabla de atletas
+CREATE TABLE atletas (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    persona_id INT NOT NULL,
+    deporte VARCHAR(100) NOT NULL,
+    categoria VARCHAR(50) NOT NULL,
+    estado BOOLEAN DEFAULT TRUE,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (persona_id) REFERENCES personas(id)
 );
 
 -- Tabla de evaluaciones
@@ -164,7 +189,16 @@ INSERT INTO usuarios (nombre, email, password, rol_id) VALUES
 ('Admin', 'admin@ejemplo.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1),
 ('Evaluador 1', 'evaluador1@ejemplo.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 2),
 ('Evaluador 2', 'evaluador2@ejemplo.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 2),
-('Usuario 1', 'usuario1@ejemplo.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 3);
+('Atleta 1', 'atleta1@ejemplo.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 3);
+
+-- Insertar datos de evaluadores y atletas
+INSERT INTO evaluadores (persona_id, especialidad, experiencia) VALUES
+(1, 'Psicología del Deporte', 10),
+(2, 'Fisiología del Ejercicio', 8);
+
+INSERT INTO atletas (persona_id, deporte, categoria) VALUES
+(3, 'Fútbol', 'Senior'),
+(4, 'Natación', 'Juvenil');
 
 -- Insertar zonas
 INSERT INTO zonas (numero, nombre, descripcion) VALUES

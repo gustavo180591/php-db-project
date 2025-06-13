@@ -57,7 +57,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <button type="submit" class="btn btn-primary w-100">Iniciar Sesión</button>
                         </form>
                         <div class="text-center mt-3">
-                            <a href="register.php" class="text-decoration-none">¿No tienes cuenta? Regístrate aquí</a>
+                            ¿No tienes cuenta? 
+                            <div class="mt-2">
+                                <a href="register.php?action=evaluador" class="btn btn-outline-primary btn-sm me-2">Registro de Evaluador</a>
+                                <a href="register.php?action=atleta" class="btn btn-outline-success btn-sm">Registro de Atleta</a>
+                            </div>
                         </div>
                     </div>
                 </div>

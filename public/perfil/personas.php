@@ -49,6 +49,7 @@ try {
             $error = "Los campos nombre, apellido, DNI y zona son requeridos";
         } else {
             if ($action === 'edit') {
+                // Actualizar los datos básicos de la persona
                 $stmt = $pdo->prepare("UPDATE personas SET 
                                       nombre = ?, 
                                       apellido = ?, 
@@ -63,6 +64,27 @@ try {
                                       estado = ? 
                                       WHERE id = ?");
                 $stmt->execute([$nombre, $apellido, $dni, $fecha_nacimiento, $sexo, $direccion, $telefono, $email, $zona_id, $centro_id, $estado, $persona_id]);
+                
+                // Obtener el rol del usuario
+                $stmt = $pdo->prepare("SELECT u.rol_id FROM usuarios u WHERE u.persona_id = ?");
+                $stmt->execute([$persona_id]);
+                $rol = $stmt->fetch();
+                
+                // Actualizar datos específicos según el rol
+                if ($rol && $rol['rol_id'] == 2) { // Evaluador
+                    $stmt = $pdo->prepare("UPDATE evaluadores SET 
+                                          especialidad = ?, 
+                                          experiencia = ? 
+                                          WHERE persona_id = ?");
+                    $stmt->execute([$_POST['especialidad'] ?? '', $_POST['experiencia'] ?? 0, $persona_id]);
+                } elseif ($rol && $rol['rol_id'] == 3) { // Atleta
+                    $stmt = $pdo->prepare("UPDATE atletas SET 
+                                          deporte = ?, 
+                                          categoria = ? 
+                                          WHERE persona_id = ?");
+                    $stmt->execute([$_POST['deporte'] ?? '', $_POST['categoria'] ?? '', $persona_id]);
+                }
+                
                 $message = "Persona actualizada exitosamente";
             } else {
                 $stmt = $pdo->prepare("INSERT INTO personas (nombre, apellido, dni, fecha_nacimiento, sexo, direccion, telefono, email, zona_id, centro_id, estado) 
@@ -211,6 +233,46 @@ try {
                                         <input type="email" class="form-control" id="email" name="email" 
                                                value="<?php echo isset($persona) ? htmlspecialchars($persona['email']) : ''; ?>">
                                     </div>
+                                    
+                                    <?php
+                                    // Obtener el rol del usuario
+                                    $stmt = $pdo->prepare("SELECT u.rol_id FROM usuarios u WHERE u.persona_id = ?");
+                                    $stmt->execute([$persona_id ?? 0]);
+                                    $rol = $stmt->fetch();
+                                    
+                                    // Mostrar información específica según el rol
+                                    if ($rol && $rol['rol_id'] == 2): // Evaluador
+                                        $stmt = $pdo->prepare("SELECT * FROM evaluadores WHERE persona_id = ?");
+                                        $stmt->execute([$persona_id]);
+                                        $evaluador = $stmt->fetch();
+                                    ?>
+                                    <div class="mb-3">
+                                        <label for="especialidad" class="form-label">Especialidad</label>
+                                        <input type="text" class="form-control" id="especialidad" name="especialidad" 
+                                               value="<?php echo htmlspecialchars($evaluador['especialidad'] ?? ''); ?>">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="experiencia" class="form-label">Años de Experiencia</label>
+                                        <input type="number" class="form-control" id="experiencia" name="experiencia" min="0"
+                                               value="<?php echo htmlspecialchars($evaluador['experiencia'] ?? ''); ?>">
+                                    </div>
+                                    <?php elseif ($rol && $rol['rol_id'] == 3): // Atleta
+                                        $stmt = $pdo->prepare("SELECT * FROM atletas WHERE persona_id = ?");
+                                        $stmt->execute([$persona_id]);
+                                        $atleta = $stmt->fetch();
+                                    ?>
+                                    <div class="mb-3">
+                                        <label for="deporte" class="form-label">Deporte</label>
+                                        <input type="text" class="form-control" id="deporte" name="deporte" 
+                                               value="<?php echo htmlspecialchars($atleta['deporte'] ?? ''); ?>">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="categoria" class="form-label">Categoría</label>
+                                        <input type="text" class="form-control" id="categoria" name="categoria"
+                                               value="<?php echo htmlspecialchars($atleta['categoria'] ?? ''); ?>">
+                                    </div>
+                                    <?php endif; ?>
+                                    
                                     <div class="mb-3">
                                         <div class="form-check">
                                             <input class="form-check-input" type="checkbox" id="estado" name="estado" 

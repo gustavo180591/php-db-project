@@ -30,7 +30,6 @@ services:
   db:
     image: mysql:8.0
     environment:
-      MYSQL_DATABASE: ${DB_DATABASE:-sistema_captacion}
       MYSQL_USER: ${DB_USERNAME:-captacion_user}
       MYSQL_PASSWORD: ${DB_PASSWORD:-captacion_password}
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-captacion_password}

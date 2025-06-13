@@ -35,8 +35,22 @@ function checkRole($requiredRole) {
         exit;
     }
     
-    if ($_SESSION['role_id'] != $requiredRole) {
-        header('Location: index.php');
-        exit;
+    // Administrador puede acceder a todo
+    if ($_SESSION['role_id'] == 1) {
+        return true;
     }
+    
+    // Evaluador puede acceder a secciones de evaluador
+    if ($_SESSION['role_id'] == 2 && $requiredRole == 2) {
+        return true;
+    }
+    
+    // Atleta puede acceder a secciones de atleta
+    if ($_SESSION['role_id'] == 3 && $requiredRole == 3) {
+        return true;
+    }
+    
+    // Si no cumple ninguna condición, redirigir
+    header('Location: index.php');
+    exit;
 }
