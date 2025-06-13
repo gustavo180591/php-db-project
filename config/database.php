@@ -1,5 +1,7 @@
 <?php
-function getConnection() {
+declare(strict_types=1);
+
+function getConnection(): PDO {
     static $pdo = null;
     
     if ($pdo === null) {
@@ -10,7 +12,11 @@ function getConnection() {
             $password = $_ENV['DB_PASSWORD'] ?? 'captacion_password';
             $port = $_ENV['DB_PORT'] ?? '3306';
 
-            $pdo = new PDO("mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4", $user, $password);
+            $pdo = new PDO(
+                "mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4",
+                $user,
+                $password
+            );
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
