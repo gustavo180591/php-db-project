@@ -3,7 +3,7 @@
         'name' => 'sistema-evaluacion/sistema-evaluacion',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => 'c535fffe2cc670ddf58de9c077087c33fe6504cd',
+        'reference' => 'ff30f45c008270782da1a2e5e3102b9e6e968b94',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -196,7 +196,7 @@
         'sistema-evaluacion/sistema-evaluacion' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => 'c535fffe2cc670ddf58de9c077087c33fe6504cd',
+            'reference' => 'ff30f45c008270782da1a2e5e3102b9e6e968b94',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

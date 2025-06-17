@@ -8,34 +8,12 @@ CREATE TABLE roles (
     descripcion TEXT
 );
 
--- Insertar roles iniciales
-INSERT INTO roles (nombre, descripcion) VALUES 
-('Administrador', 'Tiene acceso completo al sistema'),
-('Evaluador', 'Puede asignar y evaluar tests'),
-('Atleta', 'Usuario que se somete a evaluaciones');
-
--- Crear usuario administrador
-INSERT INTO personas (dni, nombre, apellido, sexo, fecha_nacimiento, email, zona_id, estado) VALUES
-('00000000', 'Admin', 'Sistema', 'M', '2000-01-01', 'admin@cepard.com', 1, 1);
-
-SET @persona_id = LAST_INSERT_ID();
-
-INSERT INTO usuarios (nombre, email, password, rol_id, persona_id, estado) VALUES
-('Admin Sistema', 'admin@cepard.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, @persona_id, 1);
-
--- Tabla de usuarios
-CREATE TABLE usuarios (
+-- Tabla de zonas
+CREATE TABLE zonas (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    numero INT NOT NULL,
     nombre VARCHAR(100) NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    rol_id INT NOT NULL,
-    persona_id INT,
-    estado BOOLEAN DEFAULT TRUE,
-    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (persona_id) REFERENCES personas(id)
-);
-
+    descripcion TEXT,
     estado BOOLEAN DEFAULT TRUE,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -48,7 +26,8 @@ CREATE TABLE centros (
     telefono VARCHAR(20),
     zona_id INT NOT NULL,
     estado BOOLEAN DEFAULT TRUE,
-    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (zona_id) REFERENCES zonas(id)
 );
 
 -- Tabla de personas
@@ -69,6 +48,20 @@ CREATE TABLE personas (
     actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (zona_id) REFERENCES zonas(id),
     FOREIGN KEY (centro_id) REFERENCES centros(id)
+);
+
+-- Tabla de usuarios
+CREATE TABLE usuarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    rol_id INT NOT NULL,
+    persona_id INT,
+    estado BOOLEAN DEFAULT TRUE,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (rol_id) REFERENCES roles(id),
+    FOREIGN KEY (persona_id) REFERENCES personas(id)
 );
 
 -- Tabla de evaluadores
@@ -93,6 +86,15 @@ CREATE TABLE atletas (
     FOREIGN KEY (persona_id) REFERENCES personas(id)
 );
 
+-- Tabla de tests
+CREATE TABLE tests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    descripcion TEXT,
+    estado BOOLEAN DEFAULT TRUE,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Tabla de evaluaciones
 CREATE TABLE evaluaciones (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -104,18 +106,8 @@ CREATE TABLE evaluaciones (
     fecha TIMESTAMP NOT NULL,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
     FOREIGN KEY (test_id) REFERENCES tests(id),
     FOREIGN KEY (persona_id) REFERENCES personas(id)
-);
-
--- Tabla de tests
-CREATE TABLE tests (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nombre VARCHAR(100) NOT NULL,
-    descripcion TEXT,
-    estado BOOLEAN DEFAULT TRUE,
-    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Tabla de preguntas/ítems
@@ -128,7 +120,8 @@ CREATE TABLE preguntas (
     opciones TEXT,
     puntos INT,
     estado BOOLEAN DEFAULT TRUE,
-    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (test_id) REFERENCES tests(id)
 );
 
 -- Tabla de asignación de tests
@@ -138,7 +131,10 @@ CREATE TABLE asignaciones_tests (
     test_id INT NOT NULL,
     fecha_asignacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     estado ENUM('pendiente', 'en_progreso', 'completado') DEFAULT 'pendiente',
-    evaluador_id INT
+    evaluador_id INT,
+    FOREIGN KEY (persona_id) REFERENCES personas(id),
+    FOREIGN KEY (test_id) REFERENCES tests(id),
+    FOREIGN KEY (evaluador_id) REFERENCES usuarios(id)
 );
 
 -- Tabla de respuestas
@@ -147,58 +143,16 @@ CREATE TABLE respuestas (
     asignacion_id INT NOT NULL,
     pregunta_id INT NOT NULL,
     respuesta TEXT,
-    fecha_respuesta TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    fecha_respuesta TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (asignacion_id) REFERENCES asignaciones_tests(id),
+    FOREIGN KEY (pregunta_id) REFERENCES preguntas(id)
 );
 
--- Agregando claves foráneas después de crear todas las tablas
-ALTER TABLE usuarios ADD CONSTRAINT fk_usuario_rol FOREIGN KEY (rol_id) REFERENCES roles(id);
-ALTER TABLE centros ADD CONSTRAINT fk_centro_zona FOREIGN KEY (zona_id) REFERENCES zonas(id);
-ALTER TABLE personas ADD CONSTRAINT fk_persona_zona FOREIGN KEY (zona_id) REFERENCES zonas(id);
-ALTER TABLE personas ADD CONSTRAINT fk_persona_centro FOREIGN KEY (centro_id) REFERENCES centros(id);
-ALTER TABLE preguntas ADD CONSTRAINT fk_pregunta_test FOREIGN KEY (test_id) REFERENCES tests(id);
-ALTER TABLE asignaciones_tests ADD CONSTRAINT fk_asignacion_persona FOREIGN KEY (persona_id) REFERENCES personas(id);
-ALTER TABLE asignaciones_tests ADD CONSTRAINT fk_asignacion_test FOREIGN KEY (test_id) REFERENCES tests(id);
-ALTER TABLE asignaciones_tests ADD CONSTRAINT fk_asignacion_evaluador FOREIGN KEY (evaluador_id) REFERENCES usuarios(id);
-ALTER TABLE respuestas ADD CONSTRAINT fk_respuesta_asignacion FOREIGN KEY (asignacion_id) REFERENCES asignaciones_tests(id);
-ALTER TABLE respuestas ADD CONSTRAINT fk_respuesta_pregunta FOREIGN KEY (pregunta_id) REFERENCES preguntas(id);
-
--- Índices para optimizar consultas
-CREATE INDEX idx_personas_dni ON personas(dni);
-CREATE INDEX idx_personas_zona ON personas(zona_id);
-CREATE INDEX idx_personas_sexo ON personas(sexo);
-CREATE INDEX idx_personas_fecha_nacimiento ON personas(fecha_nacimiento);
-CREATE INDEX idx_asignaciones_persona ON asignaciones_tests(persona_id);
-CREATE INDEX idx_asignaciones_test ON asignaciones_tests(test_id);
-CREATE INDEX idx_respuestas_asignacion ON respuestas(asignacion_id);
-CREATE INDEX idx_evaluaciones_test ON evaluaciones(test_id);
-CREATE INDEX idx_evaluaciones_persona ON evaluaciones(persona_id);
-CREATE INDEX idx_usuarios_persona ON usuarios(persona_id);
-CREATE INDEX idx_evaluaciones_fecha ON evaluaciones(fecha);
-CREATE INDEX idx_evaluaciones_aprobado ON evaluaciones(aprobado);
-
--- Índices para optimizar consultas
-CREATE INDEX idx_personas_dni ON personas(dni);
-CREATE INDEX idx_personas_zona ON personas(zona_id);
-CREATE INDEX idx_asignaciones_persona ON asignaciones_tests(persona_id);
-CREATE INDEX idx_asignaciones_test ON asignaciones_tests(test_id);
-CREATE INDEX idx_respuestas_asignacion ON respuestas(asignacion_id);
-
--- Datos de prueba
--- Insertar usuarios
-INSERT INTO usuarios (nombre, email, password, rol_id) VALUES
-('Admin', 'admin@ejemplo.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1),
-('Evaluador 1', 'evaluador1@ejemplo.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 2),
-('Evaluador 2', 'evaluador2@ejemplo.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 2),
-('Atleta 1', 'atleta1@ejemplo.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 3);
-
--- Insertar datos de evaluadores y atletas
-INSERT INTO evaluadores (persona_id, especialidad, experiencia) VALUES
-(1, 'Psicología del Deporte', 10),
-(2, 'Fisiología del Ejercicio', 8);
-
-INSERT INTO atletas (persona_id, deporte, categoria) VALUES
-(3, 'Fútbol', 'Senior'),
-(4, 'Natación', 'Juvenil');
+-- Insertar roles iniciales
+INSERT INTO roles (nombre, descripcion) VALUES 
+('Administrador', 'Tiene acceso completo al sistema'),
+('Evaluador', 'Puede asignar y evaluar tests'),
+('Atleta', 'Usuario que se somete a evaluaciones');
 
 -- Insertar zonas
 INSERT INTO zonas (numero, nombre, descripcion) VALUES
@@ -215,11 +169,34 @@ INSERT INTO centros (nombre, direccion, telefono, zona_id) VALUES
 ('Centro Oeste', 'Av. Oeste 101', '45678901', 4);
 
 -- Insertar personas
-INSERT INTO personas (nombre, apellido, dni, fecha_nacimiento, direccion, telefono, email, zona_id, centro_id) VALUES
-('Juan', 'Pérez', '12345678', '1990-01-01', 'Av. Norte 123', '1234567890', 'juan@ejemplo.com', 1, 1),
-('María', 'Gómez', '87654321', '1985-05-15', 'Av. Sur 456', '0987654321', 'maria@ejemplo.com', 2, 2),
-('Pedro', 'López', '13579246', '1992-03-21', 'Av. Este 789', '1122334455', 'pedro@ejemplo.com', 3, 3),
-('Ana', 'Martínez', '24681357', '1988-07-30', 'Av. Oeste 101', '5544332211', 'ana@ejemplo.com', 4, 4);
+INSERT INTO personas (nombre, apellido, dni, sexo, fecha_nacimiento, direccion, telefono, email, zona_id, centro_id) VALUES
+('Juan', 'Pérez', '12345678', 'M', '1990-01-01', 'Av. Norte 123', '1234567890', 'juan@ejemplo.com', 1, 1),
+('María', 'Gómez', '87654321', 'F', '1985-05-15', 'Av. Sur 456', '0987654321', 'maria@ejemplo.com', 2, 2),
+('Pedro', 'López', '13579246', 'M', '1992-03-21', 'Av. Este 789', '1122334455', 'pedro@ejemplo.com', 3, 3),
+('Ana', 'Martínez', '24681357', 'F', '1988-07-30', 'Av. Oeste 101', '5544332211', 'ana@ejemplo.com', 4, 4);
+
+-- Crear usuario administrador
+INSERT INTO personas (dni, nombre, apellido, sexo, fecha_nacimiento, email, zona_id, estado) VALUES
+('00000000', 'Admin', 'Sistema', 'M', '2000-01-01', 'admin@cepard.com', 1, 1);
+
+SET @persona_admin = LAST_INSERT_ID();
+
+INSERT INTO usuarios (nombre, email, password, rol_id, persona_id, estado) VALUES
+('Admin Sistema', 'admin@cepard.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, @persona_admin, 1);
+
+-- Insertar personas para evaluadores y atletas
+INSERT INTO personas (dni, nombre, apellido, sexo, fecha_nacimiento, email, zona_id, estado) VALUES
+('11111111', 'Eva', 'López', 'F', '1980-02-02', 'eva@ejemplo.com', 1, 1),
+('22222222', 'Carlos', 'Ruiz', 'M', '1978-03-03', 'carlos@ejemplo.com', 2, 1),
+('33333333', 'Luis', 'Martín', 'M', '1995-04-04', 'luis@ejemplo.com', 3, 1),
+('44444444', 'Sofía', 'García', 'F', '1998-05-05', 'sofia@ejemplo.com', 4, 1);
+
+-- Insertar usuarios evaluadores y atletas
+INSERT INTO usuarios (nombre, email, password, rol_id, persona_id, estado) VALUES
+('Evaluador 1', 'eva@ejemplo.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 2, (SELECT id FROM personas WHERE dni = '11111111'), 1),
+('Evaluador 2', 'carlos@ejemplo.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 2, (SELECT id FROM personas WHERE dni = '22222222'), 1),
+('Atleta 1', 'luis@ejemplo.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 3, (SELECT id FROM personas WHERE dni = '33333333'), 1),
+('Atleta 2', 'sofia@ejemplo.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 3, (SELECT id FROM personas WHERE dni = '44444444'), 1);
 
 -- Insertar tests
 INSERT INTO tests (nombre, descripcion) VALUES
@@ -236,11 +213,25 @@ INSERT INTO preguntas (test_id, numero, pregunta, tipo, opciones, puntos) VALUES
 (3, 1, '¿Cuál es la capital de España?', 'texto', NULL, 5),
 (3, 2, '¿Qué año es?', 'texto', NULL, 5);
 
--- Insertar asignaciones de tests
+-- Insertar asignaciones de tests (usando los IDs de los usuarios evaluadores)
 INSERT INTO asignaciones_tests (persona_id, test_id, evaluador_id) VALUES
-(1, 1, 2),
-(1, 2, 2),
-(2, 1, 3),
-(2, 3, 3),
-(3, 2, 2),
-(4, 3, 3);
+((SELECT id FROM personas WHERE dni = '12345678'), 1, (SELECT id FROM usuarios WHERE email = 'eva@ejemplo.com')),
+((SELECT id FROM personas WHERE dni = '12345678'), 2, (SELECT id FROM usuarios WHERE email = 'eva@ejemplo.com')),
+((SELECT id FROM personas WHERE dni = '87654321'), 1, (SELECT id FROM usuarios WHERE email = 'carlos@ejemplo.com')),
+((SELECT id FROM personas WHERE dni = '87654321'), 3, (SELECT id FROM usuarios WHERE email = 'carlos@ejemplo.com')),
+((SELECT id FROM personas WHERE dni = '13579246'), 2, (SELECT id FROM usuarios WHERE email = 'eva@ejemplo.com')),
+((SELECT id FROM personas WHERE dni = '24681357'), 3, (SELECT id FROM usuarios WHERE email = 'carlos@ejemplo.com'));
+
+-- Índices para optimizar consultas
+CREATE INDEX idx_personas_dni ON personas(dni);
+CREATE INDEX idx_personas_zona ON personas(zona_id);
+CREATE INDEX idx_personas_sexo ON personas(sexo);
+CREATE INDEX idx_personas_fecha_nacimiento ON personas(fecha_nacimiento);
+CREATE INDEX idx_asignaciones_persona ON asignaciones_tests(persona_id);
+CREATE INDEX idx_asignaciones_test ON asignaciones_tests(test_id);
+CREATE INDEX idx_respuestas_asignacion ON respuestas(asignacion_id);
+CREATE INDEX idx_evaluaciones_test ON evaluaciones(test_id);
+CREATE INDEX idx_evaluaciones_persona ON evaluaciones(persona_id);
+CREATE INDEX idx_usuarios_persona ON usuarios(persona_id);
+CREATE INDEX idx_evaluaciones_fecha ON evaluaciones(fecha);
+CREATE INDEX idx_evaluaciones_aprobado ON evaluaciones(aprobado);
