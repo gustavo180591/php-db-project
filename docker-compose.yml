@@ -6,11 +6,12 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - .:/var/www/html
+      - ./public:/var/www/html
       - ./vendor:/var/www/html/vendor
       - ./config:/var/www/html/config
+      - ./docker/apache/000-default.conf:/etc/apache2/sites-available/000-default.conf
     ports:
-      - "8080:80"
+      - "8082:80"
     depends_on:
       - db
     environment:
@@ -37,7 +38,7 @@ services:
       MYSQL_DATABASE: ${DB_DATABASE:-sistema_captacion}
     volumes:
       - db_data:/var/lib/mysql
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./unified_database.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "3306:3306"
     healthcheck:
@@ -49,7 +50,7 @@ services:
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     ports:
-      - "8081:80"
+      - "8083:80"
     environment:
       PMA_HOST: db
       PMA_USER: ${DB_USERNAME:-captacion_user}

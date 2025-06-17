@@ -24,6 +24,9 @@ RUN apt-get update && apt-get install -y \
 # Configurar Apache
 RUN a2enmod rewrite
 
+# Copiar configuración de Apache
+COPY ./docker/apache/000-default.conf /etc/apache2/sites-available/000-default.conf
+
 # Configurar PHP
 RUN { \
     echo 'error_reporting = E_ALL'; \
